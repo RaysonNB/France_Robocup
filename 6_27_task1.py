@@ -434,7 +434,7 @@ if __name__ == "__main__":
     dnn_yolo.classes = ['obj']
 
     print("pose")
-    net_pose = HumanPoseEstimation()
+    net_pose = HumanPoseEstimation(device_name="GPU")
 
     print("waiting imu")
     topic_imu = "/imu/data"
@@ -652,10 +652,10 @@ if __name__ == "__main__":
             step="none"
             
         if action=="grap":
+            close_gripper(t)
+            time.sleep(t)
             for i in range(900): move(0.2,0)
             say("I get it")
-            time.sleep(t)
-            close_gripper(t)
             time.sleep(t)
             move_to(0.30,0.019,0.0,3.0)
             time.sleep(3)
