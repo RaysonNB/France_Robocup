@@ -467,17 +467,32 @@ if __name__ == "__main__":
             detections = dnn_yolo.forward(frame2)[0]["det"]
             al=[]
             ind=0
-            for i, detection in enumerate(detections):
-                x1, y1, x2, y2, score, class_id = map(int, detection)
-                if class_id != 39: continue
-                al.append([x1, y1, x2, y2, score, class_id])
+            mask = detector1.get_mask(frame2)
+            cnts = detector1.find_contours(mask)
+            if len(cnts) > 0:
+                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
+                cx, cy = detector1.find_center(cnts[0])
+                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
+                al.append([cx,cy])
+            mask = detector2.get_mask(frame2)
+            cnts = detector2.find_contours(mask)
+            if len(cnts) > 0:
+                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
+                cx, cy = detector2.find_center(cnts[0])
+                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
+                al.append([cx,cy])
+            mask = detector3.get_mask(frame2)
+            cnts = detector3.find_contours(mask)
+            if len(cnts) > 0:
+                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
+                cx, cy = detector3.find_center(cnts[0])
+                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
+                al.append([cx,cy])
             bb=sorted(al, key=(lambda x:x[0]))
             #print(bb)
             for i in bb:
                 #print(i)
-                x1, y1, x2, y2, _, _ = i
-                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                cv2.rectangle(frame2, (x1, y1), (x2, y2), (0, 255, 255), 4)
+                cx,cy = i
                 cv2.putText(frame2, str(int(ind)), (cx,cy+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
                 ind+=1
                 px,py,pz=get_real_xyz(depth2,cx, cy)
@@ -521,47 +536,54 @@ if __name__ == "__main__":
                         continue
                     for i, detection in enumerate(bb):
                         #print(detection)
-                        x1, y1, x2, y2, score, class_id = map(int, detection)
-                        score = detection[4]
-                        #print(id)
-                        if(class_id == 39):
-                            ggg=1
-                            bottle.append(detection)
-                            E+=1
-                            cx1 = (x2 - x1) // 2 + x1
-                            cy1 = (y2 - y1) // 2 + y1
-                            
-                            
-                            px,py,pz=get_real_xyz(depth2, cx1, cy1)
-                            cnt=get_distance(px,py,pz,ax,ay,az,bx,by,bz)
-                            
-                            cnt=int(cnt)
-                            if cnt!=0 and cnt<=600: cnt=int(cnt)
-                            else: cnt=9999
-                            s_c.append(cnt)
-                            s_d.append(pz)
+                        cx,cy = map(int, detection)
+                        
+                        ggg=1
+                        bottle.append(detection)
+                        E+=1
+                        cx1 = cx
+                        cy1 = cy
+                        
+                        
+                        px,py,pz=get_real_xyz(depth2, cx1, cy1)
+                        cnt=get_distance(px,py,pz,ax,ay,az,bx,by,bz)
+                        
+                        cnt=int(cnt)
+                        if cnt!=0 and cnt<=600: cnt=int(cnt)
+                        else: cnt=9999
+                        s_c.append(cnt)
+                        s_d.append(pz)
                             
                 if ggg==0: s_c=[9999]
                 TTT=min(s_c)
                 E=s_c.index(TTT)
                 for i, detection in enumerate(bottle):
                     #print("1")
-                    x1, y1, x2, y2, score, class_id = map(int, detection)
-                    if(class_id == 39):
-                        if i == E and E!=9999 and TTT <=700:
-                            cx1 = (x2 - x1) // 2 + x1
-                            cy1 = (y2 - y1) // 2 + y1
-                            cv2.putText(outframe, str(int(TTT)//10), (x1 + 5, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1.15, (0, 0, 255), 2)
-                            cv2.rectangle(outframe, (x1, y1), (x2, y2), (0, 0, 255), 5)
-                            if i==0: b1+=1
-                            if i==1: b2+=1
-                            if i==2: b3+=1
-                            
-                            break
-                                    
+                    cx,cy = map(int, detection)
+                    if i == E and E!=9999 and TTT <=700:
+                        cx1 = cx
+                        cy1 = cy
+                        cv2.putText(outframe, str(int(TTT)//10), (cx,cy-100), cv2.FONT_HERSHEY_SIMPLEX, 1.15, (0, 0, 255), 2)
+                        if i==0:
+                            mask = detector1.get_mask(frame2)
+                            cnts = detector1.find_contours(mask)
+                        elif i==1:
+                            mask = detector2.get_mask(frame2)
+                            cnts = detector2.find_contours(mask)
                         else:
-                            v=s_c[i]
-                            cv2.putText(outframe, str(int(v)), (x1+5, y1-30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            mask = detector3.get_mask(frame2)
+                            cnts = detector3.find_contours(mask)
+                        if len(cnts) > 0:
+                            cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
+                        if i==0: b1+=1
+                        if i==1: b2+=1
+                        if i==2: b3+=1
+                        
+                        break
+                                
+                    else:
+                        v=s_c[i]
+                        cv2.putText(outframe, str(int(v)), (cx,cy-100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 if b1==max(b1,b2,b3): mark=0
                 if b2==max(b1,b2,b3): mark=1
                 if b3==max(b1,b2,b3): mark=2
@@ -581,16 +603,17 @@ if __name__ == "__main__":
                 if len(bb)!=3: continue
                 print(bb)
                 h,w,c = outframe.shape
-                x1, y1, x2, y2, score, class_id = map(int, bb[mark])
+                cx,cy = map(int, bb[mark])
+                '''
                 if framecnt==0:
                     face_box = [x1, y1, x2, y2]
                     box_roi = outframe[face_box[1]:face_box[3] - 1, face_box[0]:face_box[2] - 1, :]
                     fh,fw=abs(x1-x2),abs(y1-y2)
                     box_roi=cv2.resize(box_roi, (fh*10,fw*10), interpolation=cv2.INTER_AREA)
                     cv2.imshow("bottle", box_roi)  
-                    framecnt+=1
-                cx2 = (x2 - x1) // 2 + x1
-                cy2 = (y2 - y1) // 2 + y1
+                    framecnt+=1'''
+                cx2 = cx
+                cy2 = cy
                 e = w//2-cx2
                 v = 0.001 * e
                 if v > 0:
@@ -626,9 +649,9 @@ if __name__ == "__main__":
                 min11=999999
                 ucx,ucy=0,0
                 for num in bb:
-                    x1, y1, x2, y2, score, class_id = map(int, num)
-                    cx2 = (x2 - x1) // 2 + x1
-                    cy2 = (y2 - y1) // 2 + y1
+                    cx,cy = map(int, num)
+                    cx2 = cx
+                    cy2 = cy
                     _,_,d = get_real_xyz(depth2,cx2,cy2)
                     if abs(w//2-cx2) < min11:
                         min11=abs(w//2-cx2)
