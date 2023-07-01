@@ -16,6 +16,7 @@ from mr_voice.msg import Voice
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 from tf.transformations import euler_from_quaternion
+
 #gemini2
 def callback_image2(msg):
     global frame2
@@ -63,10 +64,10 @@ def get_real_xyz(dp,x, y):
     real_x = round(x * 2 * d * np.tan(b / 2) / w)
     return real_x, real_y, d
 
-def pose_draw():
+def pose_draw(show):
     cx7,cy7,cx9,cy9,cx5,cy5,l,r=0,0,0,0,0,0,0,0
     s1,s2,s3,s4=0,0,0,0
-    global ax,ay,az,bx,by,bz,frame2
+    global ax,ay,az,bx,by,bz
     #for num in [7,9]: #[7,9] left, [8,10] right
     n1,n2,n3=6,8,10
     cx7, cy7 = get_pose_target(pose,n2)
@@ -76,18 +77,18 @@ def pose_draw():
     cx5, cy5 = get_pose_target(pose,n1)
     if cx7==-1 and cx9!=-1:
         s1,s2,s3,s4=cx5,cy5,cx9,cy9
-        cv2.circle(frame2, (cx5,cy5), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx5,cy5), 5, (0, 255, 0), -1)
         ax,ay,az = get_real_xyz(depth2,cx5, cy5)
         _,_,l=get_real_xyz(depth2,cx5,cy5)
-        cv2.circle(frame2, (cx9,cy9), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx9,cy9), 5, (0, 255, 0), -1)
         bx, by, bz = get_real_xyz(depth2,cx9, cy9)
         _,_,r=get_real_xyz(depth2,cx9,cy9)
     elif cx7 !=-1 and cx9 ==-1:
         s1,s2,s3,s4=cx5,cy5,cx7,cy7
-        cv2.circle(frame2, (cx5,cy5), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx5,cy5), 5, (0, 255, 0), -1)
         ax, ay, az = get_real_xyz(depth2,cx5, cy5)
         _,_,l=get_real_xyz(depth2,cx5,cy5)
-        cv2.circle(frame2, (cx7,cy7), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx7,cy7), 5, (0, 255, 0), -1)
         bx,by,bz = get_real_xyz(depth2,cx7, cy7)
         _,_,r=get_real_xyz(depth2,cx7,cy7)
     elif cx7 ==-1 and cx9 == -1:
@@ -95,15 +96,15 @@ def pose_draw():
         #continue
     else:
         s1,s2,s3,s4=cx7,cy7,cx9,cy9
-        cv2.circle(frame2, (cx7,cy7), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx7,cy7), 5, (0, 255, 0), -1)
         ax, ay, az = get_real_xyz(depth2,cx7, cy7)
         _,_,l=get_real_xyz(depth2,cx7,cy7)
-        cv2.circle(frame2, (cx9,cy9), 5, (0, 255, 0), -1)
+        cv2.circle(show, (cx9,cy9), 5, (0, 255, 0), -1)
         bx, by, bz = get_real_xyz(depth2,cx9, cy9)
         _,_,r=get_real_xyz(depth2,cx9,cy9)
     
-    cv2.putText(frame2, str(int(l)), (s1 + 5, s2 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
-    cv2.putText(frame2, str(int(r)), (s3 + 5, s4 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
+    cv2.putText(show, str(int(l)), (s1 + 5, s2 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
+    cv2.putText(show, str(int(r)), (s3 + 5, s4 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
     return ax, ay, az, bx, by, bz
 def get_pose_target(pose,num):
     p = []
@@ -375,6 +376,10 @@ if __name__ == "__main__":
     detector1 = ColorDetector((170, 16, 16), (190, 255, 255))
     detector2 = ColorDetector((0, 16, 16), (25, 255, 255))
     detector3 = ColorDetector((45, 16, 16), (60, 255, 255))
+    bottlecolor=["pink","black","yellow"]
+    saidd=0
+    get_b=0
+    line_destory_cnt=0
     while not rospy.is_shutdown():
         rospy.Rate(10).sleep()
         
@@ -411,6 +416,7 @@ if __name__ == "__main__":
                 score = detection[4]
                 if class_id != 0:
                     continue
+                    
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
                 px,py,pz=get_real_xyz(depth2, cx, cy)
                 print(pz)
@@ -440,7 +446,7 @@ if __name__ == "__main__":
                     ggg=0
                     flag=None
                     if t_pose is not None:
-                        _,cy,_,_,dy,_=pose_draw()
+                        _,cy,_,_,dy,_=pose_draw(frame2)
                         if abs(cy-dy)<=50: ikun=99
                         
                     #print(x2,x1,y1,y2)
@@ -457,51 +463,40 @@ if __name__ == "__main__":
                     if fall>=1 and ikun==99:
                         cv2.rectangle(frame2, (x1, y1), (x2, y2), (255, 255, 0), 5)
                         f_cnt+=1
-                        continue
+                        #continue
                     else:
                         cv2.rectangle(frame2, (x1, y1), (x2, y2), (0, 0,255), 1)
-                        continue
+                        #continue
 
         if step=="get":
             bottle=[]
             detections = dnn_yolo.forward(frame2)[0]["det"]
             al=[]
             ind=0
-            mask = detector1.get_mask(frame2)
-            cnts = detector1.find_contours(mask)
-            if len(cnts) > 0:
-                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
-                cx, cy = detector1.find_center(cnts[0])
-                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
-                al.append([cx,cy])
-            mask = detector2.get_mask(frame2)
-            cnts = detector2.find_contours(mask)
-            if len(cnts) > 0:
-                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
-                cx, cy = detector2.find_center(cnts[0])
-                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
-                al.append([cx,cy])
-            mask = detector3.get_mask(frame2)
-            cnts = detector3.find_contours(mask)
-            if len(cnts) > 0:
-                cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
-                cx, cy = detector3.find_center(cnts[0])
-                cv2.circle(frame2, (cx, cy), 5, (0, 0, 255), -1)
-                al.append([cx,cy])
+            for i, detection in enumerate(detections):
+                x1, y1, x2, y2, score, class_id = map(int, detection)
+                score=detection[4]
+                if class_id != 39: continue
+                if score<0.3: continue
+                al.append([x1, y1, x2, y2, score, class_id])
+                print(float(score), class_id)
+                cv2.putText(frame2, str(class_id), (x1+5, y1+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
             bb=sorted(al, key=(lambda x:x[0]))
             #print(bb)
             for i in bb:
                 #print(i)
-                cx,cy = i
+                x1, y1, x2, y2, _, _ = i
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                cv2.rectangle(frame2, (x1, y1), (x2, y2), (0, 255, 255), 4)
                 cv2.putText(frame2, str(int(ind)), (cx,cy+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
                 ind+=1
                 px,py,pz=get_real_xyz(depth2,cx, cy)
                 cnt=get_distance(px,py,pz,ax,ay,az,bx,by,bz)
                 cv2.circle(frame2, (cx, cy), 5, (0, 255, 0), -1)
                 cv2.putText(frame2, str(int(pz)), (cx,cy), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)          
-            
+            outframe=frame2.copy()
             if step2=="dead":
-                outframe=frame2.copy()
+                
                 t_pose=None
                 points=[]
                 poses = net_pose.forward(outframe)
@@ -527,8 +522,21 @@ if __name__ == "__main__":
                 s_d=[]
                 ggg=0
                 flag=None
+                
                 if t_pose is not None:
-                    ax, ay, az, bx, by, bz = pose_draw()
+                    ax, ay, az, bx, by, bz = pose_draw(outframe)
+                    '''
+                    p1 = (ax,ay)
+                    p2 = (bx,by)
+
+                    theta = np.arctan2(p1[1]-p2[1], p1[0]-p2[0])
+                    endpt_x = int(p1[0] - 1000*np.cos(theta))
+                    endpt_y = int(p1[1] - 1000*np.sin(theta))
+
+                    
+                    cv2.line(line_img, (p1[0], p1[1]), (endpt_x, endpt_y), 255, 2)'''
+                    
+                    
                     if len(bb) <3:
                         if bottlecnt>=3:
                             say("not enught bottle")
@@ -536,54 +544,47 @@ if __name__ == "__main__":
                         continue
                     for i, detection in enumerate(bb):
                         #print(detection)
-                        cx,cy = map(int, detection)
-                        
-                        ggg=1
-                        bottle.append(detection)
-                        E+=1
-                        cx1 = cx
-                        cy1 = cy
-                        
-                        
-                        px,py,pz=get_real_xyz(depth2, cx1, cy1)
-                        cnt=get_distance(px,py,pz,ax,ay,az,bx,by,bz)
-                        
-                        cnt=int(cnt)
-                        if cnt!=0 and cnt<=600: cnt=int(cnt)
-                        else: cnt=9999
-                        s_c.append(cnt)
-                        s_d.append(pz)
+                        x1, y1, x2, y2, score, class_id = map(int, detection)
+                        score = detection[4]
+                        #print(id)
+                        if(class_id == 39):
+                            ggg=1
+                            bottle.append(detection)
+                            E+=1
+                            cx1 = (x2 - x1) // 2 + x1
+                            cy1 = (y2 - y1) // 2 + y1
+                            
+                            
+                            px,py,pz=get_real_xyz(depth2, cx1, cy1)
+                            cnt=get_distance(px,py,pz,ax,ay,az,bx,by,bz)
+                            
+                            cnt=int(cnt)
+                            if cnt!=0 and cnt<=600: cnt=int(cnt)
+                            else: cnt=9999
+                            s_c.append(cnt)
+                            s_d.append(pz)
                             
                 if ggg==0: s_c=[9999]
                 TTT=min(s_c)
                 E=s_c.index(TTT)
                 for i, detection in enumerate(bottle):
                     #print("1")
-                    cx,cy = map(int, detection)
-                    if i == E and E!=9999 and TTT <=700:
-                        cx1 = cx
-                        cy1 = cy
-                        cv2.putText(outframe, str(int(TTT)//10), (cx,cy-100), cv2.FONT_HERSHEY_SIMPLEX, 1.15, (0, 0, 255), 2)
-                        if i==0:
-                            mask = detector1.get_mask(frame2)
-                            cnts = detector1.find_contours(mask)
-                        elif i==1:
-                            mask = detector2.get_mask(frame2)
-                            cnts = detector2.find_contours(mask)
+                    x1, y1, x2, y2, score, class_id = map(int, detection)
+                    if(class_id == 39):
+                        if i == E and E!=9999 and TTT <=700:
+                            cx1 = (x2 - x1) // 2 + x1
+                            cy1 = (y2 - y1) // 2 + y1
+                            cv2.putText(outframe, str(int(TTT)//10), (x1 + 5, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 1.15, (0, 0, 255), 2)
+                            cv2.rectangle(outframe, (x1, y1), (x2, y2), (0, 0, 255), 5)
+                            if i==0: b1+=1
+                            if i==1: b2+=1
+                            if i==2: b3+=1
+                            
+                            break
+                                    
                         else:
-                            mask = detector3.get_mask(frame2)
-                            cnts = detector3.find_contours(mask)
-                        if len(cnts) > 0:
-                            cv2.drawContours(frame2, [cnts[0]], 0, (0, 255, 0), 2)
-                        if i==0: b1+=1
-                        if i==1: b2+=1
-                        if i==2: b3+=1
-                        
-                        break
-                                
-                    else:
-                        v=s_c[i]
-                        cv2.putText(outframe, str(int(v)), (cx,cy-100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            v=s_c[i]
+                            cv2.putText(outframe, str(int(v)), (x1+5, y1-30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 if b1==max(b1,b2,b3): mark=0
                 if b2==max(b1,b2,b3): mark=1
                 if b3==max(b1,b2,b3): mark=2
@@ -603,19 +604,19 @@ if __name__ == "__main__":
                 if len(bb)!=3: continue
                 print(bb)
                 h,w,c = outframe.shape
-                cx,cy = map(int, bb[mark])
-                '''
+                x1, y1, x2, y2, score, class_id = map(int, bb[mark])
                 if framecnt==0:
                     face_box = [x1, y1, x2, y2]
                     box_roi = outframe[face_box[1]:face_box[3] - 1, face_box[0]:face_box[2] - 1, :]
                     fh,fw=abs(x1-x2),abs(y1-y2)
                     box_roi=cv2.resize(box_roi, (fh*10,fw*10), interpolation=cv2.INTER_AREA)
                     cv2.imshow("bottle", box_roi)  
-                    framecnt+=1'''
-                cx2 = cx
-                cy2 = cy
+                    get_b=mark
+                    framecnt+=1
+                cx2 = (x2 - x1) // 2 + x1
+                cy2 = (y2 - y1) // 2 + y1
                 e = w//2-cx2
-                v = 0.001 * e
+                v = 0.0015 * e
                 if v > 0:
                     v = min(v, 0.2)
                 if v < 0:
@@ -631,10 +632,10 @@ if __name__ == "__main__":
                     if depth2[cy][cx] == 0 or 0 < depth2[i][cx] < depth2[cy][cx]:
                         cy = i 
                 _,_,d = get_real_xyz(depth2,cx,cy)
-                e = d - 350 #number is he last distance
+                e = d - 400 #number is he last distance
                 if abs(e)<=15:
-                    step2="none"
-                    step="grap"
+                    step2="turn_again"
+                    
                     
                 v = 0.001 * e
                 if v > 0:
@@ -649,9 +650,9 @@ if __name__ == "__main__":
                 min11=999999
                 ucx,ucy=0,0
                 for num in bb:
-                    cx,cy = map(int, num)
-                    cx2 = cx
-                    cy2 = cy
+                    x1, y1, x2, y2, score, class_id = map(int, num)
+                    cx2 = (x2 - x1) // 2 + x1
+                    cy2 = (y2 - y1) // 2 + y1
                     _,_,d = get_real_xyz(depth2,cx2,cy2)
                     if abs(w//2-cx2) < min11:
                         min11=abs(w//2-cx2)
@@ -665,8 +666,9 @@ if __name__ == "__main__":
                 if v < 0:
                     v = max(v, -0.2)
                 move(0, v)
-                if abs(e) <= 4:
+                if abs(e) <= 3:
                     step="grap"
+                    get_b=mark
                     step2="none"
         if step=="grap":
             t=3.0
@@ -679,17 +681,20 @@ if __name__ == "__main__":
                     cy = i 
             _,_,d = get_real_xyz(depth2,cx,cy)
             x,y,z=d/1000.0, 0.019, 0.06 #z 水平 y 上下 x 前後
-            
+            for i in range(1000): move(0.2,0)
             if x >= 0.25:
                 cntm=int((x-0.25)*1000//0.2)
                 for i in range(cntm): move(0.2,0)
-            for i in range(500): move(0.2,0)
+            
             move_to(0.3,0.019,0.1,3.0)
             time.sleep(2)
             print(x)
             time.sleep(t)
             close_gripper(t)
             time.sleep(2)
+            
+            saidd="I got the "+bottlecolor[get_b]+"bottle"
+            say(saidd)
             move_to(0.20,-0.1,0.1,3.0)
             time.sleep(2)
             step="givehim"
@@ -730,7 +735,9 @@ if __name__ == "__main__":
                         
             if rcx==0: continue
             _, _, d = get_real_xyz(depth2, rcx, rcy)
-            if d<=350 and d>=0: step="put"
+            if d<=350 and d>=0: 
+                say("here you are")
+                step="put"
             print("people: depth: ",d)
             cur_x = calc_linear_x(d, 300)
             cur_z = calc_angular_z(cx, 320)
@@ -775,28 +782,28 @@ if __name__ == "__main__":
         if step=="person1":
             s=s.lower()
             print("s", s)
-            if "weak" in s or "feel" in s: 
+            if "weak" in s:
                 say("Do you want me to call an ambulance?")
                 s=""
                 print("s", s)
             s=s.lower()
-            if "thank" in s or "you" in s or "are" in s or "help" in s or "no" in s: 
+            if "thank" in s or "you" in s or "are" in s or "help" in s: 
                 s=""
                 say("It's my pleasure to assist you. If you need any further help, please don't hesitate to let me know.")
                 time.sleep(3)
-                step="person3"
-            if "better " in s or "now" in s or "concern" in s or "thank" in s or "you" in s and step=="3": 
+            if ("better " in s or "now" in s and  "concern" in s):
                 say("You're welcome. I'm always here to serve you. Please take care of yourself. If you need any more help or have any other concerns, please feel free to let me know.") 
                 time.sleep(6)
                 s=""
                 break
+        
         if step=="get" and step2=="dead":
             E=outframe.copy()
         else:
             E=frame2.copy()
+        
         cv2.imshow("image", E)   
         key = cv2.waitKey(1)
         if key in [ord('q'), 27]:
             break
         
-
