@@ -697,7 +697,25 @@ if __name__ == "__main__":
             time.sleep(1)
             action="queue"
         if action == "queue":
-            
+            cx, cy, frame, yn = find_cx_cy()
+            if yn == "no":
+                cur_x, cur_z = 0, 0.2
+                move(cur_x. cur_z)
+            else:
+                h,w,c = down_image.shape
+                x1, y1, x2, y2, cx2, cy2 = map(int, need_position)
+                e = w//2 - cx2
+                v = 0.001 * e
+                if v > 0:
+                    v = min(v, 0.3)
+                if v < 0:
+                    v = max(v, -0.3)
+                move(0, v)
+                print(e)
+                if abs(e) <= 5:
+                    say("join")
+                    action="walker"
+        if action == "walker":
             
             chassis.move_to(6.54,-4.94,0.00368)
             #checking
