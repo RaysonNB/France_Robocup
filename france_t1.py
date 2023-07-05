@@ -32,7 +32,7 @@ class FollowMe(object):
         poses = net_pose.forward(up_image)
 
         # 找到最近的人物
-        min_distance = float("inf")
+        min_distance = 999999
         closest_person = None
         reference_x, reference_y = 100, 100  # 更换为你的参考点
         for i, pose in enumerate(poses):
@@ -42,13 +42,13 @@ class FollowMe(object):
                 continue
             _,_,distance = self.get_real_xyz(up_depth, x, y)
             # 确保最近人物的距离不大于 1800mm
-            if distance < min_distance and distance <= 1800:
+            if distance < min_distance and distance <= 1800 and distance !=0:
                 min_distance = distance
                 closest_person = pose
 
         if closest_person is None:
             return 0, 0, up_image, "no"
-
+        print(min_distance)
         # 获取最近人物的关键点坐标
         key_points = []
         for j, num in enumerate(l):
@@ -188,7 +188,15 @@ def move(forward_speed: float = 0, turn_speed: float = 0):
     msg.linear.x = forward_speed
     msg.angular.z = turn_speed
     _cmd_vel.publish(msg)
-
+def get_pose_target2(pose, num):
+    p = []
+    for i in [num]:
+        if pose[i][2] > 0:
+            p.append(pose[i])
+            
+    if len(p) == 0:
+        return -1, -1, -1  # 返回三个值，最后一个值为 -1 表示预测失败
+    return int(p[0][0]), int(p[0][1]), 1
 
 def turn_to(angle: float, speed: float):
     global _imu
@@ -451,7 +459,7 @@ if __name__ == "__main__":
     img = np.zeros((h,w*2,c),dtype=np.uint8)
     img[:h,:w,:c] = _image1
     img[:h,w:,:c] = _frame
-    
+    slocnt=0
     # u_var
     d, one, mask, key, is_turning = 1, 0, 0, 0, False
     ax, ay, az, bx, by, bz = 0, 0, 0, 0, 0, 0
@@ -466,7 +474,7 @@ if __name__ == "__main__":
     # wait for prepare
     print("start")
     time.sleep(10)
-    
+    need_position=[]
     lr="middle"
     # var in camera
     px, py, pz, pree_cx, pree_cy,= 0,0,0,0,0
@@ -536,12 +544,12 @@ if __name__ == "__main__":
             reference_x, reference_y = 100, 100  # 更换为你的参考点
             for i, pose in enumerate(poses):
                 # 获取人物中心点坐标
-                x, y, preds = self.get_pose_target(pose, l[0])
+                x, y, preds = get_pose_target2(pose, l[0])
                 if preds <= 0:
                     continue
-                _,_,distance = self.get_real_xyz(up_depth, x, y)
+                _,_,distance = get_real_xyz(up_depth, x, y,1)
                 # 确保最近人物的距离不大于 1800mm
-                if distance < min_distance and distance <= 1800:
+                if distance < min_distance and distance <= 2500 and distance!=0:
                     min_distance = distance
                     closest_person = pose
         
@@ -549,25 +557,29 @@ if __name__ == "__main__":
         if step=="get_bag":
                 
         
-                if closest_person is None:
+            if closest_person is not None:
         
                 # 获取最近人物的关键点坐标
                 key_points = []
                 for j, num in enumerate(l):
-                    x, y, preds = self.get_pose_target(closest_person, num)
+                    x, y, preds = get_pose_target2(closest_person, num)
                     if preds <= 0:
                         continue
                     key_points.append((x, y))
                     ax,ay=x,y
+                cv2.circle(up_image, (ax, ay), 5, (0, 255, 0), -1)
                 if len(detection_list) < 1: 
                     print("no bag")
                     
                 if len(detection_list)<=2 and len(detection_list)>0:
+                    sort_detection=sorted(detection_list, key=(lambda x:x[0]))
                     print(detection_list)
-                    if len(detection_list)==2:
-                        sort_detection=sorted(detection_list, key=(lambda x:x[0]))
+                    if len(detection_list)==1:
+                        need_position=sort_detection[0]
+                    else:
+                        
                         if posecnt==0:
-                            if ax<0: lr="left"
+                            if ax>0: lr="left"
                             else: lr="right"
                             posecnt+=1
                         if lr=="left": need_position=sort_detection[0]
@@ -616,6 +628,10 @@ if __name__ == "__main__":
                 set_joints(joint1, joint2, joint3, joint4, 1)
                 
                 time.sleep(2.5)
+                joint1, joint2, joint3, joint4 = 1.7,-1.052,0.376,0.696
+                set_joints(joint1, joint2, joint3, joint4, 3)
+                
+                time.sleep(3)
                 action="back"
                 step="none"
 
@@ -668,7 +684,7 @@ if __name__ == "__main__":
             time.sleep(3)
             say("I will follow you now")
             for i in range(50000): move(-0.2,0)
-            break
+            
             action="follow"
             
             
@@ -681,29 +697,17 @@ if __name__ == "__main__":
             print("turn_x_z:", x, z)
             if yn=="no":
                 x,z=0,0
-                say("slower")
+                if slocnt>=5:
+                    say("slower")
+                    slocnt=0
+                slocnt+=1
+            else:
+                slocnt=0
+                
             move(x,z)
             step="check_voice"
         if action == "back":
-            chassis.move_to(6.81,-2.49,0.00755)
-            #checking
-            while not rospy.is_shutdown():
-                # 4. Get the chassis status.
-                code = chassis.status_code
-                text = chassis.status_text
-                if code == 3:
-                    break
-            time.sleep(1)
-            chassis.move_to(6.54,-4.94,0.00368)
-            #checking
-            while not rospy.is_shutdown():
-                # 4. Get the chassis status.
-                code = chassis.status_code
-                text = chassis.status_text
-                if code == 3:
-                    break
-            time.sleep(1)
-            chassis.move_to(-3.29,-4.12,0.00359)
+            chassis.move_to(-1.36,-6.98,0.187)
             #checking
             while not rospy.is_shutdown():
                 # 4. Get the chassis status.
