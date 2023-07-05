@@ -474,7 +474,7 @@ if __name__ == "__main__":
     move_turn="turn"
     #senser var
     class_need=0
-    
+    closest_person = None
     move_to(0.287,0,0.193,3.0)
     time.sleep(2)
     move_to(0.30,0.019,0.0,3.0)
@@ -525,54 +525,40 @@ if __name__ == "__main__":
                     cv2.circle(down_image, (cx, cy), 5, (0, 255, 0), -1)
                     print("bag score:", score)
             #pose detect
-            pose=None
+            l=[10]  # 保留节点 5 和 12
+            h, w = up_image.shape[:2]
+            pose = None
             poses = net_pose.forward(up_image)
+            
+            # 找到最近的人物
+            min_distance = float("inf")
+            closest_person = None
+            reference_x, reference_y = 100, 100  # 更换为你的参考点
             for i, pose in enumerate(poses):
-                point = []
-                for j, (x,y,preds) in enumerate(pose): #x: ipex 坐標 y: ipex 坐標 preds: 准度
-                    if preds <= 0: continue
-                    x,y = map(int,[x,y])
-                    #add depth
-                    for num in [8,10]:
-                        point.append(j)
-                if len(point) == 2:
-                    pose = poses[i]
-                    break
+                # 获取人物中心点坐标
+                x, y, preds = self.get_pose_target(pose, l[0])
+                if preds <= 0:
+                    continue
+                _,_,distance = self.get_real_xyz(up_depth, x, y)
+                # 确保最近人物的距离不大于 1800mm
+                if distance < min_distance and distance <= 1800:
+                    min_distance = distance
+                    closest_person = pose
         
         #if step=="none": continue
         if step=="get_bag":
-            if pose is not None:
-                cx7, cy7, cx9, cy9, cx5, cy5 = 0, 0, 0, 0, 0, 0
-                n1, n2, n3 = 6, 8, 10
-                #print(pose)
-                cx7, cy7 = get_pose_target(pose, n2)
-
-                cx9, cy9 = get_pose_target(pose, n3)
-
-                cx5, cy5 = get_pose_target(pose, n1)
                 
-                
-                if cx7 == -1 and cx9 != -1:
-                    cv2.circle(up_image, (cx5, cy5), 5, (0, 255, 0), -1)
-                    ax, ay, az = get_real_xyz(up_depth,cx5, cy5,1)
-
-                    cv2.circle(up_image, (cx9, cy9), 5, (0, 255, 0), -1)
-                    bx, by, bz = get_real_xyz(up_depth,cx9, cy9,1)
-                elif cx7 != -1 and cx9 == -1:
-
-                    cv2.circle(up_image, (cx5, cy5), 5, (0, 255, 0), -1)
-                    ax, ay, az = get_real_xyz(up_depth,cx5, cy5,1)
-
-                    cv2.circle(up_image, (cx7, cy7), 5, (0, 255, 0), -1)
-                    bx, by, bz = get_real_xyz(up_depth,cx7, cy7,1)
-                elif cx7 == -1 and cx9 == -1:
-                    pass
-                else:
-                    cv2.circle(up_image, (cx7, cy7), 5, (0, 255, 0), -1)
-                    ax, ay, az = get_real_xyz(up_depth,cx7, cy7,1)
-
-                    cv2.circle(up_image, (cx9, cy9), 5, (0, 255, 0), -1)
-                    bx, by, bz = get_real_xyz(up_depth,cx9, cy9,1)
+        
+                if closest_person is None:
+        
+                # 获取最近人物的关键点坐标
+                key_points = []
+                for j, num in enumerate(l):
+                    x, y, preds = self.get_pose_target(closest_person, num)
+                    if preds <= 0:
+                        continue
+                    key_points.append((x, y))
+                    ax,ay=x,y
                 if len(detection_list) < 1: 
                     print("no bag")
                     
